@@ -1,0 +1,10 @@
+idf_component_register(
+	SRCS 
+		"src/elf_loader.c"
+		"src/elf_relocations.c"
+		"src/elf_symbols.c"
+	INCLUDE_DIRS 
+		"include"
+	REQUIRES 
+		heap
+)

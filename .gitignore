@@ -1,0 +1,12 @@
+build/
+
+.clangd
+.vscode/
+.idea/
+*.swp
+
+sdkconfig.old
+sdkconfig.ci
+build_log.txt
+
+managed_components/
