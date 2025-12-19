@@ -35,6 +35,6 @@ void elf_unload(elf_module_t* module);
 
 void* elf_find_symbol(elf_module_t* module, const char* name);
 
-const char* str_error(int err);
+const char* elf_strerror(int err);
 
 #endif
