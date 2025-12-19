@@ -64,7 +64,7 @@ void load_module() {
 
 	int err = elf_load(dos_context.loaded_data, dos_context.loaded_size, &dos_context.module);
 	if (err != ELF_OK) {
-		printf("Error loading ELF: %d\n", err);
+		printf("Error loading ELF: %s\n", elf_strerror(err));
 		return;
 	}
 
