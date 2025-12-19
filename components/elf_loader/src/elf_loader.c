@@ -33,26 +33,31 @@ static int validate_elf(elf_context_t* ctx) {
 	
 	ctx->ehdr = (const Elf32_Ehdr*)ctx->elf_data;
 	
+	// Magic check
 	if (memcmp(ctx->ehdr->e_ident, "\x7f""ELF", 4) != 0) {
 		printf("[elf] Invalid magic\n");
 		return ELF_ERR_INVALID_MAGIC;
 	}
 	
+	// ELF 32-bit check
 	if (ctx->ehdr->e_ident[4] != 1) {
 		printf("[elf] Not ELF32\n");
 		return ELF_ERR_INVALID_FORMAT;
 	}
 	
+	// Architecture check
 	if (ctx->ehdr->e_machine != EM_XTENSA) {
 		printf("[elf] Not Xtensa: %d\n", ctx->ehdr->e_machine);
 		return ELF_ERR_INVALID_ARCH;
 	}
 	
+	// Type check
 	if (ctx->ehdr->e_type != ET_REL) {
 		printf("[elf] Not relocatable: type=%d\n", ctx->ehdr->e_type);
 		return ELF_ERR_INVALID_FORMAT;
 	}
 	
+	// Printing section count
 	if (ctx->debug >= 1) {
 		printf("[elf] Valid ELF: %d sections\n", ctx->ehdr->e_shnum);
 	}
