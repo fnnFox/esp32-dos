@@ -5,7 +5,7 @@ import sys
 # Настройки
 PORT = '/dev/ttyUSB0'
 BAUD = 115200
-FILE = 'guest.o'
+FILE = 'guest.so'
 
 try:
     ser = serial.Serial(PORT, BAUD, timeout=0.1)

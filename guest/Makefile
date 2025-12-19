@@ -1,28 +1,33 @@
 CC = xtensa-esp32-elf-gcc
 OBJDUMP = xtensa-esp32-elf-objdump
-OBJCOPY = xtensa-esp32-elf-objcopy
+READELF = xtensa-esp32-elf-readelf
 
 CFLAGS = -c \
 		 -O2 \
+		 -fPIC \
 		 -mlongcalls \
 		 -fno-builtin \
-		 -nostdlib \
-		 -ffunction-sections \
-		 -fdata-sections \
+		 -fno-jump-tables \
 		 -mtext-section-literals \
 		 -I./include
 
+LDFLAGS = -shared \
+		  -nostdlib
+
 TARGET = guest
 
-all: $(TARGET).o
+all: $(TARGET).so
 
 $(TARGET).o: $(TARGET).c
 	$(CC) $(CFLAGS) -o $@ $<
 
-dump: $(TARGET).o
-	$(OBJDUMP) -d -t -r $<
+$(TARGET).so: $(TARGET).o
+	$(CC) $(LDFLAGS) -o $@ $<
+
+dump: $(TARGET).so
+	$(READELF) -h -s -r $<
 
 clean:
-	rm -f *.o
+	rm -f *.o *.so
 
 .PHONY: all dump clean
