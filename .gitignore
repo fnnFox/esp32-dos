@@ -10,3 +10,6 @@ sdkconfig.ci
 build_log.txt
 
 managed_components/
+
+guest/*.o
+guest/*.so
