@@ -11,24 +11,24 @@
 #define R_XTENSA_ASM_EXPAND 11
 
 typedef struct {
-	const uint8_t* elf_data;
-	size_t elf_size;
+	const uint8_t* elf_data;	// sources
+	size_t elf_size;			// source size
 	
-	const Elf32_Ehdr* ehdr;
-	const Elf32_Shdr* shdrs;
-	const char* shstrtab;
+	const Elf32_Ehdr* ehdr;		// elf header
+	const Elf32_Shdr* shdrs;	// section headers
+	const char* shstrtab;		// section headers name table
 	
-	const Elf32_Sym* symtab;
-	const char* strtab;
-	uint32_t symtab_count;
+	const Elf32_Sym* symtab;	// symbol table
+	const char* strtab;			// symbol name table
+	uint32_t symtab_count;		// symbol count
 	
-	void** section_addrs;
-	uint32_t section_count;
+	void** section_addrs;		// section addresses
+	uint32_t section_count;		// section count
 	
-	void* iram_block;
-	size_t iram_size;
-	void* dram_block;
-	size_t dram_size;
+	void* iram_block;			// block of Instriction RAM
+	size_t iram_size;			// IRAM size
+	void* dram_block;			// block of Data RAM
+	size_t dram_size;			// DRAM size
 	
 	int debug;
 } elf_context_t;
