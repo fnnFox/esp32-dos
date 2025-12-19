@@ -11,5 +11,6 @@ build_log.txt
 
 managed_components/
 
-guest/*.o
-guest/*.so
+*.o
+*.so
+*.elf
