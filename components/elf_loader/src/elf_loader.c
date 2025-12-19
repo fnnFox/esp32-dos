@@ -52,8 +52,8 @@ static int validate_elf(elf_context_t* ctx) {
 	}
 	
 	// Type check
-	if (ctx->ehdr->e_type != ET_REL) {
-		printf("[elf] Not relocatable: type=%d\n", ctx->ehdr->e_type);
+	if (ctx->ehdr->e_type != ET_DYN) {
+		printf("[elf] Not DYN file: type=%d\n", ctx->ehdr->e_type);
 		return ELF_ERR_INVALID_FORMAT;
 	}
 	
