@@ -38,6 +38,7 @@ typedef struct {
 	size_t dram_size;			// DRAM size
 
 	uint32_t code_bias;
+	uint32_t data_bias;
 
 	void (*entry)(void);		// entry point
 	
