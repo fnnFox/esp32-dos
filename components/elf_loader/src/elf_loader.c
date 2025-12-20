@@ -173,36 +173,35 @@ static int load_segments(elf_context_t* ctx) {
 		printf("[elf] Data: %u bytes -> DRAM %p\n", ctx->data_phdr->p_filesz, ctx->dram_block);
 	}
 
+	ctx->code_bias = (uint32_t)ctx->iram_block - ctx->code_phdr->p_vaddr;
+
 	return ELF_OK;
 }
 
 static int find_entry(elf_context_t* ctx, const char* entry_name, guest_entry_t* out) {
-	if (!ctx->symtab || !ctx->strtab) {
+	if (!ctx->dynsym || !ctx->dynstr) {
 		return ELF_ERR_NO_ENTRY;
 	}
 	
 	if (!entry_name) {
-		entry_name = "guest_main";
+		return ELF_ERR_NO_ENTRY;
 	}
 	
-	for (uint32_t i = 0; i < ctx->symtab_count; i++) {
-		const Elf32_Sym* sym = &ctx->symtab[i];
-		const char* name = ctx->strtab + sym->st_name;
+	for (uint32_t i = 0; i < ctx->dynsym_count; i++) {
+		const Elf32_Sym* sym = &ctx->dynsym[i];
+		const char* name = ctx->dynstr + sym->st_name;
 		
 		if (strcmp(name, entry_name) == 0) {
-			uint16_t shndx = sym->st_shndx;
-			
-			if (shndx != SHN_UNDEF && shndx < ctx->section_count) {
-				void* base = ctx->section_addrs[shndx];
-				if (base) {
-					*out = (guest_entry_t)((uint32_t)base + sym->st_value);
-					if (ctx->debug >= 1) {
-						printf("[elf] Entry '%s' at %p\n", entry_name, *out);
-					}
-					return ELF_OK;
-				}
+			if  (sym->st_shndx == SHN_UNDEF) {
+				break;
 			}
-			break;
+
+			*out = (guest_entry_t)(sym->st_value + ctx->code_bias);
+
+			if (ctx->debug >= 1) {
+				printf("[elf] Entry '%s' at %p\n", entry_name, *out);
+			}
+			return ELF_OK;
 		}
 	}
 	

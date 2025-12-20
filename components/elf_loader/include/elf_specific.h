@@ -37,6 +37,8 @@ typedef struct {
 	void* dram_block;			// block of Data RAM
 	size_t dram_size;			// DRAM size
 
+	uint32_t code_bias;
+
 	void (*entry)(void);		// entry point
 	
 	int debug;
