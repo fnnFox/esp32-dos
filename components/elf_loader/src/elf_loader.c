@@ -127,57 +127,31 @@ static int parse_segments(elf_context_t* ctx) {
 }
 
 static int allocate_memory(elf_context_t* ctx) {
-	size_t iram_needed = 0;
-	size_t dram_needed = 0;
-	
-	for (uint32_t i = 0; i < ctx->section_count; i++) {
-		const Elf32_Shdr* sh = &ctx->shdrs[i];
-		const char* name = get_section_name(ctx, i);
-		
-		if (!(sh->sh_flags & SHF_ALLOC)) continue;
-		if (sh->sh_size == 0) continue;
-		
-		size_t size = align4(sh->sh_size);
-		
-		if (elf_is_iram_section(sh, name)) {
-			iram_needed += size;
-		} else {
-			dram_needed += size;
-		}
-	}
-	
+	ctx->iram_size = ctx->code_phdr->p_memsz;
+	ctx->dram_size = ctx->data_phdr->p_memsz;
+
 	if (ctx->debug >= 1) {
-		printf("[elf] Need: IRAM=%d, DRAM=%d\n", iram_needed, dram_needed);
+		printf("[elf] Need: IRAM=%d, DRAM=%d\n", ctx->iram_size, ctx->dram_size);
+	}
+
+	if (ctx->iram_size > 0) {
+		ctx->iram_block = heap_caps_malloc(ctx->iram_size, MALLOC_CAP_EXEC | MALLOC_CAP_32BIT);
+		if (!ctx->iram_block) goto MEMORY_ERROR;
+		memset(ctx->iram_block, 0, ctx->iram_size);
 	}
 	
-	if (iram_needed > 0) {
-		ctx->iram_block = heap_caps_malloc(iram_needed, MALLOC_CAP_EXEC | MALLOC_CAP_32BIT);
-		if (!ctx->iram_block) {
-			printf("[elf] Failed to allocate IRAM\n");
-			return ELF_ERR_NO_MEMORY;
-		}
-		ctx->iram_size = iram_needed;
+	if (ctx->dram_size > 0) {
+		ctx->dram_block = heap_caps_malloc(ctx->dram_size, MALLOC_CAP_8BIT);
+		if (!ctx->dram_block) goto MEMORY_ERROR;
+		memset(ctx->dram_block, 0, ctx->dram_size);
 	}
-	
-	if (dram_needed > 0) {
-		ctx->dram_block = heap_caps_malloc(dram_needed, MALLOC_CAP_8BIT);
-		if (!ctx->dram_block) {
-			printf("[elf] Failed to allocate DRAM\n");
-			if (ctx->iram_block) heap_caps_free(ctx->iram_block);
-			return ELF_ERR_NO_MEMORY;
-		}
-		memset(ctx->dram_block, 0, dram_needed);
-		ctx->dram_size = dram_needed;
-	}
-	
-	ctx->section_addrs = calloc(ctx->section_count, sizeof(void*));
-	if (!ctx->section_addrs) {
-		if (ctx->iram_block) heap_caps_free(ctx->iram_block);
-		if (ctx->dram_block) heap_caps_free(ctx->dram_block);
-		return ELF_ERR_NO_MEMORY;
-	}
-	
+
 	return ELF_OK;
+
+MEMORY_ERROR:
+	if (ctx->iram_block) heap_caps_free(ctx->iram_block);
+	if (ctx->dram_block) heap_caps_free(ctx->dram_block);
+	return ELF_ERR_NO_MEMORY;
 }
 
 static int load_sections(elf_context_t* ctx) {
