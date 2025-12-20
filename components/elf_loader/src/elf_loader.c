@@ -154,49 +154,25 @@ MEMORY_ERROR:
 	return ELF_ERR_NO_MEMORY;
 }
 
-static int load_sections(elf_context_t* ctx) {
-	size_t iram_offset = 0;
-	size_t dram_offset = 0;
-	
-	for (uint32_t i = 0; i < ctx->section_count; i++) {
-		const Elf32_Shdr* sh = &ctx->shdrs[i];
-		const char* name = get_section_name(ctx, i);
-		
-		if (!(sh->sh_flags & SHF_ALLOC)) continue;
-		if (sh->sh_size == 0) continue;
-		
-		size_t size = sh->sh_size;
-		size_t aligned = align4(size);
-		
-		if (elf_is_iram_section(sh, name)) {
-			void* dest = (uint8_t*)ctx->iram_block + iram_offset;
-			elf_iram_write(dest, ctx->elf_data + sh->sh_offset, size);
-			ctx->section_addrs[i] = dest;
-			iram_offset += aligned;
-			
-			if (ctx->debug >= 1) {
-				printf("[elf] [%2lu] %-20s -> IRAM %p (%lu)\n",
-					   (unsigned long)i, name, dest, (unsigned long)size);
-			}
-		} else {
-			void* dest = (uint8_t*)ctx->dram_block + dram_offset;
-			
-			if (sh->sh_type == SHT_NOBITS) {
-				// .bss - уже обнулено
-			} else {
-				memcpy(dest, ctx->elf_data + sh->sh_offset, size);
-			}
-			
-			ctx->section_addrs[i] = dest;
-			dram_offset += aligned;
-			
-			if (ctx->debug >= 1) {
-				printf("[elf] [%2lu] %-20s -> DRAM %p (%lu)\n",
-					   (unsigned long)i, name, dest, (unsigned long)size);
-			}
-		}
+static int load_segments(elf_context_t* ctx) {
+	elf_iram_write(
+			ctx->iram_block,
+			ctx->elf_data + ctx->code_phdr->p_offset,
+			ctx->code_phdr->p_filesz);
+
+	if (ctx->debug >= 1) {
+		printf("[elf] Code: %u bytes -> IRAM %p\n", ctx->code_phdr->p_filesz, ctx->iram_block);
 	}
 	
+	memcpy(
+			ctx->dram_block,
+			ctx->elf_data + ctx->data_phdr->p_offset,
+			ctx->data_phdr->p_filesz);
+
+	if (ctx->debug >= 1) {
+		printf("[elf] Data: %u bytes -> DRAM %p\n", ctx->data_phdr->p_filesz, ctx->dram_block);
+	}
+
 	return ELF_OK;
 }
 
