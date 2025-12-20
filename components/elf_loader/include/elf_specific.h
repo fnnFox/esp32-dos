@@ -18,14 +18,8 @@ typedef struct {
 
 	const Elf32_Phdr* phdrs;	// program headers
 	uint32_t phdr_count;		// program header count
-	
-	void* iram_block;			// block of Instriction RAM
-	size_t iram_size;			// IRAM size
-	void* dram_block;			// block of Data RAM
-	size_t dram_size;			// DRAM size
-
-	uint32_t text_vaddr;
-	uint32_t data_vaddr;
+	const Elf32_Phdr* code_phdr;// program header of code segment
+	const Elf32_Phdr* data_phdr;// program header of data segment
 
 	const Elf32_Dyn* dynamic;	// .dynamic pointer
 	
@@ -35,6 +29,13 @@ typedef struct {
 
 	const Elf32_Rela* rela;		// relocation table
 	uint32_t rela_count;		// reloc count
+	const Elf32_Rela* rela_plt;
+	uint32_t rela_plt_count;
+	
+	void* iram_block;			// block of Instriction RAM
+	size_t iram_size;			// IRAM size
+	void* dram_block;			// block of Data RAM
+	size_t dram_size;			// DRAM size
 
 	void (*entry)(void);		// entry point
 	
