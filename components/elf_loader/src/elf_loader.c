@@ -10,20 +10,8 @@
 #include "guest_api.h"
 
 extern void elf_iram_write(void* dst, const void* src, size_t len);
-extern int elf_is_iram_section(const Elf32_Shdr* sh, const char* name);
 extern int elf_apply_relocations(elf_context_t* ctx);
-extern uint32_t elf_resolve_symbol(elf_context_t* ctx, uint32_t sym_idx);
 
-static const char* get_section_name(elf_context_t* ctx, uint32_t idx) {
-	if (!ctx->shstrtab || idx >= ctx->ehdr->e_shnum) {
-		return "";
-	}
-	return ctx->shstrtab + ctx->shdrs[idx].sh_name;
-}
-
-static size_t align4(size_t x) {
-	return (x + 3) & ~3;
-}
 
 static int validate_elf(elf_context_t* ctx) {
 	if (ctx->elf_size < sizeof(Elf32_Ehdr)) {
