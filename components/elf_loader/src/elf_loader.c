@@ -65,34 +65,64 @@ static int validate_elf(elf_context_t* ctx) {
 	return ELF_OK;
 }
 
-static int parse_sections(elf_context_t* ctx) {
-	ctx->shdrs = (const Elf32_Shdr*)(ctx->elf_data + ctx->ehdr->e_shoff);
-	ctx->section_count = ctx->ehdr->e_shnum;
-	
-	if (ctx->ehdr->e_shstrndx < ctx->section_count) {
-		const Elf32_Shdr* shstr = &ctx->shdrs[ctx->ehdr->e_shstrndx];
-		ctx->shstrtab = (const char*)(ctx->elf_data + shstr->sh_offset);
-	}
-	
-	for (uint32_t i = 0; i < ctx->section_count; i++) {
-		const Elf32_Shdr* sh = &ctx->shdrs[i];
-		
-		if (sh->sh_type == SHT_SYMTAB) {
-			ctx->symtab = (const Elf32_Sym*)(ctx->elf_data + sh->sh_offset);
-			ctx->symtab_count = sh->sh_size / sizeof(Elf32_Sym);
-			
-			if (sh->sh_link < ctx->section_count) {
-				const Elf32_Shdr* strtab = &ctx->shdrs[sh->sh_link];
-				ctx->strtab = (const char*)(ctx->elf_data + strtab->sh_offset);
-			}
-			
-			if (ctx->debug >= 1) {
-				printf("[elf] Found symtab: %lu symbols\n", (unsigned long)ctx->symtab_count);
-			}
-			break;
+static int parse_segments(elf_context_t* ctx) {
+	ctx->phdrs = (const Elf32_Phdr*)(ctx->elf_data + ctx->ehdr->e_phoff);
+	ctx->phdr_count = ctx->ehdr->e_phnum;
+
+	for (uint32_t i = 0; i < ctx->phdr_count; i++) {
+		const Elf32_Phdr* ph = &ctx->phdrs[i];
+
+		switch (ph->p_type) {
+			case PT_DYNAMIC:
+				ctx->dynamic = (const Elf32_Dyn*)(ctx->elf_data + ph->p_offset);
+				break;
+
+			case PT_LOAD:
+				if (ph->p_flags & PF_X)	
+					ctx->code_phdr = ph;
+				else
+					ctx->data_phdr = ph;
+				break;
 		}
 	}
-	
+
+	if (!ctx->dynamic || !ctx->code_phdr || !ctx->data_phdr) {
+		return ELF_ERR_INVALID_FORMAT;
+	}
+
+	for (const Elf32_Dyn* dyn = ctx->dynamic; dyn->d_tag != DT_NULL; dyn++) {
+		switch (dyn->d_tag) {
+			case DT_HASH:
+				// .hash { nbucket, nchain (index=1), etc... }
+				ctx->dynsym_count = ((const uint32_t*)(ctx->elf_data + dyn->d_un.d_ptr))[1];
+				break;
+
+			case DT_STRTAB:
+				ctx->dynstr = (const char*)(ctx->elf_data + dyn->d_un.d_ptr);
+				break;
+
+			case DT_SYMTAB:
+				ctx->dynsym = (const Elf32_Sym*)(ctx->elf_data + dyn->d_un.d_ptr);
+				break;
+
+			case DT_RELA:
+				ctx->rela = (const Elf32_Rela*)(ctx->elf_data + dyn->d_un.d_ptr);
+				break;
+
+			case DT_RELASZ:
+				ctx->rela_count = (dyn->d_un.d_val) / sizeof(Elf32_Rela);
+				break;
+
+			case DT_JMPREL:
+				ctx->rela_plt = (const Elf32_Rela*)(ctx->elf_data + dyn->d_un.d_ptr);
+				break;
+
+			case DT_PLTRELSZ:
+				ctx->rela_plt_count = (dyn->d_un.d_val) / sizeof(Elf32_Rela);
+				break;
+		}
+	}
+
 	return ELF_OK;
 }
 
