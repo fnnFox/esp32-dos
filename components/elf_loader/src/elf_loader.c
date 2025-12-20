@@ -212,7 +212,7 @@ static int find_entry(elf_context_t* ctx, const char* entry_name, guest_entry_t*
 int elf_load(const uint8_t* elf_data, size_t elf_size, elf_module_t* out) {
 	elf_load_options_t opts = {
 		.entry_name = NULL,
-		.debug_level = 0
+		.debug_level = 5
 	};
 	return elf_load_ex(elf_data, elf_size, &opts, out);
 }
