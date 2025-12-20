@@ -174,6 +174,7 @@ static int load_segments(elf_context_t* ctx) {
 	}
 
 	ctx->code_bias = (uint32_t)ctx->iram_block - ctx->code_phdr->p_vaddr;
+	ctx->data_bias = (uint32_t)ctx->dram_block - ctx->data_phdr->p_vaddr;
 
 	return ELF_OK;
 }
