@@ -234,13 +234,13 @@ int elf_load_ex(const uint8_t* elf_data, size_t elf_size, const elf_load_options
 	err = validate_elf(&ctx);
 	if (err != ELF_OK) goto cleanup;
 	
-	err = parse_sections(&ctx);
+	err = parse_segments(&ctx);
 	if (err != ELF_OK) goto cleanup;
 	
 	err = allocate_memory(&ctx);
 	if (err != ELF_OK) goto cleanup;
 	
-	err = load_sections(&ctx);
+	err = load_segments(&ctx);
 	if (err != ELF_OK) goto cleanup;
 	
 	err = elf_apply_relocations(&ctx);
@@ -251,7 +251,7 @@ int elf_load_ex(const uint8_t* elf_data, size_t elf_size, const elf_load_options
 	
 	Cache_Flush(0);
 	
-	const char* entry_name = opts ? opts->entry_name : NULL;
+	const char* entry_name = opts ? opts->entry_name : "module_main";
 	err = find_entry(&ctx, entry_name, &out->entry_point);
 	if (err != ELF_OK) goto cleanup;
 	
@@ -260,14 +260,11 @@ int elf_load_ex(const uint8_t* elf_data, size_t elf_size, const elf_load_options
 	out->data_mem = ctx.dram_block;
 	out->data_size = ctx.dram_size;
 	
-	free(ctx.section_addrs);
-	
 	return ELF_OK;
 
 cleanup:
 	if (ctx.iram_block) heap_caps_free(ctx.iram_block);
 	if (ctx.dram_block) heap_caps_free(ctx.dram_block);
-	if (ctx.section_addrs) free(ctx.section_addrs);
 	return err;
 }
 
