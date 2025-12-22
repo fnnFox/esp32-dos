@@ -22,7 +22,7 @@ static int validate_elf(elf_context_t* ctx) {
 	ctx->ehdr = (const Elf32_Ehdr*)ctx->elf_data;
 	
 	// Magic check
-	if (memcmp(ctx->ehdr->e_ident, "\x7f""ELF", 4) != 0) {
+	if (memcmp(ctx->ehdr->e_ident, ELFMAG, 4) != 0) {
 		printf("[elf] Invalid magic\n");
 		return ELF_ERR_INVALID_MAGIC;
 	}
