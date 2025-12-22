@@ -5,10 +5,13 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define R_XTENSA_NONE       0
-#define R_XTENSA_32         1
-#define R_XTENSA_SLOT0_OP   20
-#define R_XTENSA_ASM_EXPAND 11
+#define R_XTENSA_NONE           0
+#define R_XTENSA_32             1
+#define R_XTENSA_RTLD           2
+#define R_XTENSA_GLOB_DAT       3
+#define R_XTENSA_JMP_SLOT       4
+#define R_XTENSA_RELATIVE       5
+#define R_XTENSA_PLT            6
 
 typedef struct {
 	const uint8_t* elf_data;	// sources
