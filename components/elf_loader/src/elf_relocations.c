@@ -34,11 +34,10 @@ static void elf_write32(void* dst, uint32_t value, int is_iram) {
 	}
 }
 
-int elf_is_iram_section(const Elf32_Shdr* sh, const char* name) {
-	if (sh->sh_flags & SHF_EXECINSTR) return 1;
-	if (strcmp(name, ".literal") == 0) return 1;
-	if (strstr(name, ".literal.")) return 1;
-	return 0;
+int elf_is_iram(elf_context_t* ctx, uint32_t vaddr) {
+	uint32_t start = ctx->code_phdr->p_vaddr;
+	uint32_t end = start + ctx->code_phdr->p_memsz;
+	return (vaddr >= start && vaddr < end);
 }
 
 static int apply_r_xtensa_32(elf_context_t* ctx, void* addr, uint32_t sym_value, int32_t addend, int is_iram) {

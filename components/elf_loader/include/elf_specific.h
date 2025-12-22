@@ -49,7 +49,7 @@ typedef struct {
 } elf_context_t;
 
 void elf_iram_write(void* dst, const void* src, size_t len);
-int elf_is_iram_section(const Elf32_Shdr* sh, const char* name);
+int elf_is_iram(elf_context_t* ctx, uint32_t vaddr);
 int elf_apply_relocations(elf_context_t* ctx);
 uint32_t elf_resolve_symbol(elf_context_t* ctx, uint32_t sym_idx);
 void* elf_lookup_export(const char* name);
