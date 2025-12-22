@@ -85,7 +85,7 @@ static int elf_process_reloc_table(elf_context_t* ctx, const Elf32_Rela* rela, u
 			}
 
 			default:
-				printf("[rel] Unknown type %d at 0x%x\n", type, vaddr);
+				printf("[rel] Unknown type %d at 0x%lx\n", type, vaddr);
 				continue;
 		}
 		elf_write32((void*)raddr, patch, is_iram);

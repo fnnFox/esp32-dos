@@ -149,7 +149,7 @@ static int load_segments(elf_context_t* ctx) {
 			ctx->code_phdr->p_filesz);
 
 	if (ctx->debug >= 1) {
-		printf("[elf] Code: %u bytes -> IRAM %p\n", ctx->code_phdr->p_filesz, ctx->iram_block);
+		printf("[elf] Code: %lu bytes -> IRAM %p\n", ctx->code_phdr->p_filesz, ctx->iram_block);
 	}
 	
 	memcpy(
@@ -158,7 +158,7 @@ static int load_segments(elf_context_t* ctx) {
 			ctx->data_phdr->p_filesz);
 
 	if (ctx->debug >= 1) {
-		printf("[elf] Data: %u bytes -> DRAM %p\n", ctx->data_phdr->p_filesz, ctx->dram_block);
+		printf("[elf] Data: %lu bytes -> DRAM %p\n", ctx->data_phdr->p_filesz, ctx->dram_block);
 	}
 
 	ctx->code_bias = (uint32_t)ctx->iram_block - ctx->code_phdr->p_vaddr;
