@@ -38,6 +38,7 @@ static void elf_write32(void* dst, uint32_t value, int is_iram) {
 int elf_is_iram(elf_context_t* ctx, uint32_t vaddr) {
 	uint32_t start = ctx->code_phdr->p_vaddr;
 	uint32_t end = start + ctx->code_phdr->p_memsz;
+	printf("[chk] vaddr = 0x%lx, istart = 0x%lx, iend = 0x%lx\n", vaddr, start, end);
 	return (vaddr >= start && vaddr < end);
 }
 
@@ -79,8 +80,11 @@ static int elf_process_reloc_table(elf_context_t* ctx, const Elf32_Rela* rela, u
 			}
 
 			case R_XTENSA_RELATIVE: {
-				uint32_t bias = elf_is_iram(ctx, rel->r_addend) ? ctx->code_bias : ctx->data_bias;
-				patch = rel->r_addend + bias;
+				uint32_t v = *(uint32_t*)raddr;
+				uint32_t bias = elf_is_iram(ctx, v) ? ctx->code_bias : ctx->data_bias;
+				printf("[rel] bias: 0x%lx\n", bias);
+				patch = bias + v;
+				printf("[rel] patch: 0x%lx\n", patch);
 				break;
 			}
 
@@ -89,6 +93,10 @@ static int elf_process_reloc_table(elf_context_t* ctx, const Elf32_Rela* rela, u
 				continue;
 		}
 		elf_write32((void*)raddr, patch, is_iram);
+
+		if (ctx->debug >= 2) {
+			printf("[rel] %ld: type=%d vaddr=0x%lx -> raddr=0x%lx patch=0x%lx %s\n", i, type, vaddr, raddr, patch, is_iram ? "IRAM" : "DRAM");
+}
 	}
 	return 0;
 }

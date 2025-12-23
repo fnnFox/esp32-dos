@@ -3,7 +3,6 @@ OBJDUMP = xtensa-esp32-elf-objdump
 READELF = xtensa-esp32-elf-readelf
 
 CFLAGS = -c \
-		 -O2 \
 		 -fPIC \
 		 -mlongcalls \
 		 -fno-builtin \

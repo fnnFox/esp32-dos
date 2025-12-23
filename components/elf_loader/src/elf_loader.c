@@ -111,6 +111,20 @@ static int parse_segments(elf_context_t* ctx) {
 		}
 	}
 
+	if (ctx->debug >= 3) {
+		printf("[par] Successfully parsed.\n");
+		printf("[par] .dynamic at %p\n", ctx->dynamic);
+		printf("[par] code_phdr at %p\n", ctx->code_phdr);
+		printf("[par] data_phdr at %p\n", ctx->data_phdr);
+		printf("[par] .dynsym at %p\n", ctx->dynsym);
+		printf("[par] dynsym_count = %ld\n", ctx->dynsym_count);
+		printf("[par] .dynstr at %p\n", ctx->dynstr);
+		printf("[par] .rela at %p\n", ctx->rela);
+		printf("[par] rela_count = %ld\n", ctx->rela_count);
+		printf("[par] .rela_plt at %p\n", ctx->rela_plt);
+		printf("[par] rela_plt_count = %ld\n", ctx->rela_plt_count);
+	}
+
 	return ELF_OK;
 }
 
@@ -119,19 +133,23 @@ static int allocate_memory(elf_context_t* ctx) {
 	ctx->dram_size = ctx->data_phdr->p_memsz;
 
 	if (ctx->debug >= 1) {
-		printf("[elf] Need: IRAM=%d, DRAM=%d\n", ctx->iram_size, ctx->dram_size);
+		printf("[mem] Need: IRAM=%d, DRAM=%d\n", ctx->iram_size, ctx->dram_size);
 	}
 
 	if (ctx->iram_size > 0) {
 		ctx->iram_block = heap_caps_malloc(ctx->iram_size, MALLOC_CAP_EXEC | MALLOC_CAP_32BIT);
 		if (!ctx->iram_block) goto MEMORY_ERROR;
-		memset(ctx->iram_block, 0, ctx->iram_size);
+		//memset(ctx->iram_block, 0, ctx->iram_size);
 	}
 	
 	if (ctx->dram_size > 0) {
 		ctx->dram_block = heap_caps_malloc(ctx->dram_size, MALLOC_CAP_8BIT);
 		if (!ctx->dram_block) goto MEMORY_ERROR;
 		memset(ctx->dram_block, 0, ctx->dram_size);
+	}
+
+	if (ctx->debug >= 1) {
+		printf("[mem] Successfully allocated.\n");
 	}
 
 	return ELF_OK;
@@ -149,7 +167,7 @@ static int load_segments(elf_context_t* ctx) {
 			ctx->code_phdr->p_filesz);
 
 	if (ctx->debug >= 1) {
-		printf("[elf] Code: %lu bytes -> IRAM %p\n", ctx->code_phdr->p_filesz, ctx->iram_block);
+		printf("[seg] Code: %lu bytes -> IRAM %p\n", ctx->code_phdr->p_filesz, ctx->iram_block);
 	}
 	
 	memcpy(
@@ -158,7 +176,7 @@ static int load_segments(elf_context_t* ctx) {
 			ctx->data_phdr->p_filesz);
 
 	if (ctx->debug >= 1) {
-		printf("[elf] Data: %lu bytes -> DRAM %p\n", ctx->data_phdr->p_filesz, ctx->dram_block);
+		printf("[seg] Data: %lu bytes -> DRAM %p\n", ctx->data_phdr->p_filesz, ctx->dram_block);
 	}
 
 	ctx->code_bias = (uint32_t)ctx->iram_block - ctx->code_phdr->p_vaddr;
@@ -169,10 +187,12 @@ static int load_segments(elf_context_t* ctx) {
 
 static int find_entry(elf_context_t* ctx, const char* entry_name, guest_entry_t* out) {
 	if (!ctx->dynsym || !ctx->dynstr) {
+		printf("[ent] Error: .dynsym or .dynstr is null.\n");
 		return ELF_ERR_NO_ENTRY;
 	}
 	
 	if (!entry_name) {
+		printf("[ent] Error: Entry name is null.\n");
 		return ELF_ERR_NO_ENTRY;
 	}
 	
@@ -188,19 +208,19 @@ static int find_entry(elf_context_t* ctx, const char* entry_name, guest_entry_t*
 			*out = (guest_entry_t)(sym->st_value + ctx->code_bias);
 
 			if (ctx->debug >= 1) {
-				printf("[elf] Entry '%s' at %p\n", entry_name, *out);
+				printf("[ent] Entry '%s' at %p\n", entry_name, *out);
 			}
 			return ELF_OK;
 		}
 	}
 	
-	printf("[elf] Entry '%s' not found\n", entry_name);
+	printf("[ent] Entry '%s' not found\n", entry_name);
 	return ELF_ERR_NO_ENTRY;
 }
 
 int elf_load(const uint8_t* elf_data, size_t elf_size, elf_module_t* out) {
 	elf_load_options_t opts = {
-		.entry_name = NULL,
+		.entry_name = "module_main",
 		.debug_level = 5
 	};
 	return elf_load_ex(elf_data, elf_size, &opts, out);
