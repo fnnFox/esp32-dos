@@ -5,7 +5,7 @@ import sys
 # Настройки
 PORT = '/dev/ttyUSB0'
 BAUD = 115200
-FILE = 'guest.o'
+FILE = 'guest.mod'
 
 try:
     ser = serial.Serial(PORT, BAUD, timeout=0.1)
@@ -22,7 +22,7 @@ try:
 
     for byte in data:
         ser.write(bytes([byte])) 
-        time.sleep(0.002) 
+        time.sleep(0.001) 
 
     print("Done!")
     

@@ -6,34 +6,6 @@
 
 extern uint32_t elf_resolve_symbol(elf_context_t* ctx, uint32_t sym_idx);
 
-void elf_iram_write(void* dst, const void *src, size_t len) {
-	volatile uint32_t *d = (volatile uint32_t *)dst;
-	const uint8_t *s = (const uint8_t *)src;
-
-	size_t words = len / 4;
-	size_t remainder = len % 4;
-
-	for (size_t i = 0; i < words; i++) {
-		uint32_t word;
-		memcpy(&word, s + (i * 4), 4); 
-		d[i] = word;
-	}
-	if (remainder > 0) {
-		uint32_t last_word = 0;
-		memcpy(&last_word, s + (words * 4), remainder);
-		d[words] = last_word;
-	}
-}
-
-static void elf_write32(void* dst, uint32_t value, int is_iram) {
-	if (is_iram) {
-		volatile uint32_t* p = (volatile uint32_t*)dst;
-		*p = value;
-	} else {
-		*(uint32_t*)dst = value;
-	}
-}
-
 int elf_is_iram_section(const Elf32_Shdr* sh, const char* name) {
 	if (sh->sh_flags & SHF_EXECINSTR) return 1;
 	if (strcmp(name, ".literal") == 0) return 1;
@@ -85,90 +57,72 @@ int elf_apply_relocations(elf_context_t* ctx) {
 	}
 	
 	for (uint32_t i = 0; i < ctx->ehdr->e_shnum; i++) {
-		const Elf32_Shdr* sh = &ctx->shdrs[i];
+		const Elf32_Shdr* shdr = &ctx->shdrs[i];
 		
-		// Ищем секции RELA
-		if (sh->sh_type != SHT_RELA) {
-			continue;
-		}
+		if (shdr->sh_type != SHT_RELA) continue;
 		
-		const char* name = ctx->shstrtab + sh->sh_name;
-		uint32_t target_idx = sh->sh_info;
+		const char* name = ctx->shstrtab + shdr->sh_name;
+		if (strstr(name, ".xt.") != NULL) continue;
+
+		uint32_t target_idx = shdr->sh_info;
 		
 		if (ctx->debug >= 1) {
 			printf("[rel] Section '%s' -> target [%lu]\n", name, (unsigned long)target_idx);
 		}
-		
-		// Проверяем, загружена ли целевая секция
-		if (target_idx >= ctx->section_count || !ctx->section_addrs[target_idx]) {
-			if (ctx->debug >= 1) {
-				printf("[rel] Target section not loaded, skipping\n");
-			}
-			continue;
-		}
-		
-		void* base = ctx->section_addrs[target_idx];
-		const Elf32_Shdr* target_sh = &ctx->shdrs[target_idx];
-		int is_iram = elf_is_iram_section(target_sh, ctx->shstrtab + target_sh->sh_name);
-		
-		// Обрабатываем релокации
-		const Elf32_Rela* rels = (const Elf32_Rela*)(ctx->elf_data + sh->sh_offset);
-		uint32_t count = sh->sh_size / sizeof(Elf32_Rela);
-		
-		if (ctx->debug >= 1) {
-			printf("[rel] Processing %lu entries\n", (unsigned long)count);
-		}
-		
-		for (uint32_t r = 0; r < count; r++) {
-			uint32_t r_offset = rels[r].r_offset;
-			uint32_t r_info = rels[r].r_info;
-			int32_t r_addend = rels[r].r_addend;
 
-			if (ctx->debug >= 1) {
-				printf("[rel] Entry %lu: offset=0x%lx, info=0x%lx, addend=%ld\n", (unsigned long)r, (unsigned long)r_offset, (unsigned long)r_info, (long)r_addend);
+		uint32_t target_base = ctx->shdrs[target_idx].sh_addr;
+
+		int rela_count = shdr->sh_size / sizeof(Elf32_Rela);
+
+		const Elf32_Rela* relas = (Elf32_Rela*)(ctx->elf_data + shdr->sh_offset);
+
+		for (int r = 0; r < rela_count; r++) {
+			const Elf32_Rela* rela = &relas[r];
+
+			int type = rela->r_info & 0xFF;
+			int idx = rela->r_info >> 8;
+
+			uint32_t target_address = target_base + rela->r_offset;
+
+			uint32_t symbol_address = elf_resolve_symbol(ctx, idx);
+
+			if (symbol_address == 0 && idx != 0) {
+				printf("[rel] Failed to resolve symbol %u\n", idx);
+				return -1;
 			}
-			
-			uint32_t sym_idx = ELF32_R_SYM(r_info);
-			uint32_t rel_type = ELF32_R_TYPE(r_info);
-			
-			void* patch_addr = (uint8_t*)base + r_offset;
-			
-			// Разрешаем символ
-			uint32_t sym_value = 0;
-			if (sym_idx != 0) {
-				sym_value = elf_resolve_symbol(ctx, sym_idx);
-				if (sym_value == 0) {
-					printf("[rel] ERROR: Cannot resolve symbol %lu\n", (unsigned long)sym_idx);
-					// Продолжаем, но это может вызвать проблемы
+
+			uint32_t value = symbol_address + rela->r_addend;
+
+			switch (type) {
+				case R_XTENSA_32: {
+					int is_iram = (target_address >= (uint32_t)ctx->iram_block && target_address < (uint32_t)ctx->iram_block + ctx->iram_size);
+					elf_write32((void*)target_address, value, is_iram);
+					
+					if (ctx->debug >= 2) {
+						printf("[rel] R_XTENSA_32: [0x%08lx] = 0x%08lx\n", target_address, value);
+					}
+					break;
 				}
-			}
-			
-			// Применяем релокацию
-			int err = 0;
-			switch (rel_type) {
+				
+				case R_XTENSA_SLOT0_OP: {
+					if (ctx->debug >= 2) {
+						printf("[rel] R_XTENSA_SLOT0_OP: offset=0x%lx (skipped)\n", rela->r_offset);
+					}
+					break;
+				}
+				
 				case R_XTENSA_NONE:
-					break;
-					
-				case R_XTENSA_32:
-					err = apply_r_xtensa_32(ctx, patch_addr, sym_value, r_addend, is_iram);
-					break;
-					
-				case R_XTENSA_SLOT0_OP:
-					err = apply_r_xtensa_slot0_op(ctx, patch_addr, sym_value, r_addend);
 					break;
 					
 				default:
 					if (ctx->debug >= 1) {
-						printf("[rel] WARNING: Unknown reloc type %lu\n", (unsigned long)rel_type);
+						printf("[rel] Unknown type %u at offset 0x%lx\n", type, rela->r_offset);
 					}
 					break;
 			}
-			
-			if (err != 0) {
-				return err;
-			}
 		}
 	}
-	
+
 	return 0;
 }
+

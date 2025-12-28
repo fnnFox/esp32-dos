@@ -3,26 +3,21 @@ OBJDUMP = xtensa-esp32-elf-objdump
 OBJCOPY = xtensa-esp32-elf-objcopy
 
 CFLAGS = -c \
-		 -O2 \
 		 -mlongcalls \
-		 -fno-builtin \
-		 -nostdlib \
-		 -ffunction-sections \
-		 -fdata-sections \
-		 -mtext-section-literals \
+		 -mno-text-section-literals \
 		 -I./include
 
 TARGET = guest
 
-all: $(TARGET).o
+all: $(TARGET).mod
 
-$(TARGET).o: $(TARGET).c
+$(TARGET).mod: $(TARGET).c
 	$(CC) $(CFLAGS) -o $@ $<
 
-dump: $(TARGET).o
+dump: $(TARGET).mod
 	$(OBJDUMP) -d -t -r $<
 
 clean:
-	rm -f *.o
+	rm -f *.mod
 
 .PHONY: all dump clean

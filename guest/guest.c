@@ -1,11 +1,13 @@
 #include "esp_guest.h"
 
+int counter;
+
 int guest_main(void) {
-	
-	for (int i = 1; i <= 10; i++) {
-		printf("Step %d\n", i);
-		delay(500);
+
+	const char* test = "hello!";
+	while (counter < 10) {
+		counter++;
 	}
-	
-	return 621;
+
+	return test[0];
 }

@@ -15,14 +15,13 @@ typedef struct {
 	size_t elf_size;			// source size
 	
 	const Elf32_Ehdr* ehdr;		// elf header
-	const Elf32_Shdr* shdrs;	// section headers
+	Elf32_Shdr* shdrs;			// section headers
 	const char* shstrtab;		// section headers name table
 	
 	const Elf32_Sym* symtab;	// symbol table
 	const char* strtab;			// symbol name table
 	uint32_t symtab_count;		// symbol count
 	
-	void** section_addrs;		// section addresses
 	uint32_t section_count;		// section count
 	
 	void* iram_block;			// block of Instriction RAM
@@ -33,7 +32,11 @@ typedef struct {
 	int debug;
 } elf_context_t;
 
-void elf_iram_write(void* dst, const void* src, size_t len);
+void elf_iram_memcpy(void* dst, const void* src, size_t len);
+void elf_iram_memset(void* dst, int val, size_t len);
+void elf_write32(void* dst, uint32_t value, int is_iram);
+uint32_t elf_read32(void* src, int is_iram);
+
 int elf_is_iram_section(const Elf32_Shdr* sh, const char* name);
 int elf_apply_relocations(elf_context_t* ctx);
 uint32_t elf_resolve_symbol(elf_context_t* ctx, uint32_t sym_idx);

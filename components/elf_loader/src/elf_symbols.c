@@ -68,46 +68,28 @@ void* elf_lookup_export(const char* name) {
 	return NULL;
 }
 
-uint32_t elf_resolve_symbol(elf_context_t* ctx, uint32_t sym_idx) {
-	if (!ctx || !ctx->symtab || sym_idx >= ctx->symtab_count) {
-		return 0;
-	}
-
-	const Elf32_Sym* sym = &ctx->symtab[sym_idx];
-	const char* name = ctx->strtab ? (ctx->strtab + sym->st_name) : "";
-	uint16_t shndx = sym->st_shndx;
-
-	if (ctx->debug >= 2) {
-		printf("[sym] Resolving [%lu] '%s': shndx=%u, value=0x%lx\n", (unsigned long)sym_idx, name, shndx, (unsigned long)sym->st_value);
-	}
-
-	if (shndx == SHN_UNDEF) {
-		void* addr = elf_lookup_export(name);
-		if (addr) {
-			if (ctx->debug >= 1) {
-				printf("[sym] External '%s' -> %p\n", name, addr);
-			}
-			return (uint32_t)addr;
-		}
-		printf("[sym] ERROR: Unresolved '%s'\n", name);
-		return 0;
-	}
-
-	if (shndx == SHN_ABS) {
-		return sym->st_value;
-	}
-
-	if (shndx < ctx->section_count && ctx->section_addrs[shndx]) {
-		uint32_t addr = (uint32_t)ctx->section_addrs[shndx] + sym->st_value;
-		if (ctx->debug >= 2) {
-			printf("[sym] '%s' -> sec[%u] + 0x%lx = %p\n", name, shndx, (unsigned long)sym->st_value, (void*)addr);
-		}
-		return addr;
-	}
-
-	printf("[sym] ERROR: Section %u not loaded for '%s'\n", shndx, name);
-
+uint32_t lookup_firmware_symbol(const char* name) {
+	printf("NO LOOKUP IMPLEMENTED\n");
 	return 0;
+}
+
+uint32_t elf_resolve_symbol(elf_context_t* ctx, uint32_t sym_idx) {
+	if (sym_idx >= ctx->symtab_count) {
+		return 0;
+	}
+	
+	const Elf32_Sym* sym = &ctx->symtab[sym_idx];
+	
+	if (sym->st_shndx == SHN_UNDEF) {
+		const char* name = ctx->strtab + sym->st_name;
+		return lookup_firmware_symbol(name);
+	}
+	
+	if (ELF32_ST_TYPE(sym->st_info) == STT_SECTION) {
+		return ctx->shdrs[sym->st_shndx].sh_addr;
+	}
+	
+	return ctx->shdrs[sym->st_shndx].sh_addr + sym->st_value;
 }
 
 static void guest_delay_ms(uint32_t ms) {

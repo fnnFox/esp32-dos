@@ -3,6 +3,7 @@ idf_component_register(
 		"src/elf_loader.c"
 		"src/elf_relocations.c"
 		"src/elf_symbols.c"
+		"src/elf_memory.c"
 	INCLUDE_DIRS 
 		"include"
 	REQUIRES 
