@@ -4,7 +4,6 @@ OBJCOPY = xtensa-esp32-elf-objcopy
 
 CFLAGS = -c \
 		 -mlongcalls \
-		 -mno-text-section-literals \
 		 -I./include
 
 TARGET = guest
