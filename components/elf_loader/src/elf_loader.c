@@ -194,7 +194,7 @@ static int load_sections(elf_context_t* ctx) {
 				break;
 			}
 			case SEC_NULL: {
-				memset(shdr->sh_addr, 0, shdr->sh_size);
+				memset((void*)shdr->sh_addr, 0, shdr->sh_size);
 				printf("[sec] Loaded NULL section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
 				break;
 			}
