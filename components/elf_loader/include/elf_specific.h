@@ -36,6 +36,8 @@ void elf_iram_memcpy(void* dst, const void* src, size_t len);
 void elf_iram_memset(void* dst, int val, size_t len);
 void elf_write32(void* dst, uint32_t value, int is_iram);
 uint32_t elf_read32(void* src);
+void elf_write24(void* dst, uint32_t value, int is_iram);
+uint32_t elf_read24(void* src);
 
 int elf_is_iram_section(const Elf32_Shdr* sh, const char* name);
 int elf_apply_relocations(elf_context_t* ctx);

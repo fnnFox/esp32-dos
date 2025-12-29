@@ -43,3 +43,22 @@ uint32_t elf_read32(void* src) {
 	return *(uint32_t*)src;
 }
 
+void elf_write24(void *dst, uint32_t value, int is_iram) {
+	uint8_t bytes[3] = {
+		value & 0xFF,
+		(value >> 8) & 0xFF,
+		(value >> 16) & 0xFF
+	};
+
+	if (is_iram) {
+		elf_iram_memcpy(dst, bytes, 3);
+	} else {
+		memcpy(dst, bytes, 3);
+	}
+}
+
+uint32_t elf_read24(void *src) {
+	uint8_t* p = (uint8_t*)src;
+	return p[0] | (p[1] << 8) | (p[2] << 16);
+}
+
