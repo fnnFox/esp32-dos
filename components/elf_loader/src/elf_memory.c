@@ -30,34 +30,26 @@ void elf_iram_memset(void* dst, int val, size_t len) {
 	}
 }
 
-void elf_write32(void* dst, uint32_t value, int is_iram) {
-	if (is_iram) {
-		volatile uint32_t* p = (volatile uint32_t*)dst;
-		*p = value;
-	} else {
-		*(uint32_t*)dst = value;
-	}
+void elf_write32(void* dst, uint32_t value) {
+	uint8_t* p = (uint8_t*)dst;
+	p[0] = value & 0xFF;
+	p[1] = (value >> 8) & 0xFF;
+	p[2] = (value >> 16) & 0xFF;
+	p[3] = (value >> 24) & 0xFF;
 }
 
 uint32_t elf_read32(void* src) {
 	return *(uint32_t*)src;
 }
 
-void elf_write24(void *dst, uint32_t value, int is_iram) {
-	uint8_t bytes[3] = {
-		value & 0xFF,
-		(value >> 8) & 0xFF,
-		(value >> 16) & 0xFF
-	};
-
-	if (is_iram) {
-		elf_iram_memcpy(dst, bytes, 3);
-	} else {
-		memcpy(dst, bytes, 3);
-	}
+void elf_write24(void *dst, uint32_t value) {
+	uint8_t* p = (uint8_t*)dst;
+	p[0] = value & 0xFF;
+	p[1] = (value >> 8) & 0xFF;
+	p[2] = (value >> 16) & 0xFF;
 }
 
-uint32_t elf_read24(void *src) {
+uint32_t elf_read24(void* src) {
 	uint8_t* p = (uint8_t*)src;
 	return p[0] | (p[1] << 8) | (p[2] << 16);
 }
