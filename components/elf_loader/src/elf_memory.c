@@ -39,12 +39,7 @@ void elf_write32(void* dst, uint32_t value, int is_iram) {
 	}
 }
 
-uint32_t elf_read32(void* src, int is_iram) {
-	if (is_iram) {
-		volatile uint32_t* p = (volatile uint32_t*)src;
-		return *p;
-	} else {
-		return *(uint32_t*)src;
-	}
+uint32_t elf_read32(void* src) {
+	return *(uint32_t*)src;
 }
 
