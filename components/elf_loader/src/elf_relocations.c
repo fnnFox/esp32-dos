@@ -13,40 +13,6 @@ int elf_is_iram_section(const Elf32_Shdr* sh, const char* name) {
 	return 0;
 }
 
-static int apply_r_xtensa_32(elf_context_t* ctx, void* addr, uint32_t sym_value, int32_t addend, int is_iram) {
-	uint32_t mem_value;
-	if (is_iram) {
-		volatile uint32_t* p = (volatile uint32_t*)addr;
-		mem_value = *p;
-	} else {
-		mem_value = *(uint32_t*)addr;
-	}
-	uint32_t result = sym_value + addend + mem_value;
-	
-	if (ctx->debug >= 1) {
-		printf("[rel] R_XTENSA_32: sym=0x%lx + rela=%ld + mem=0x%lx = 0x%lx\n", (unsigned long)sym_value, (long)addend, (unsigned long)mem_value, (unsigned long)result);
-	}
-	
-	elf_write32(addr, result, is_iram);
-	
-	return 0;
-}
-
-static int apply_r_xtensa_slot0_op(elf_context_t* ctx, void* addr, uint32_t sym_value, int32_t addend) {
-	// R_XTENSA_SLOT0_OP используется для модификации инструкций
-	// Обычно это L32R или CALL
-	// 
-	// Для L32R: literal уже пропатчен через R_XTENSA_32
-	// Для CALL с -mlongcalls: используется L32R + CALLX, а не прямой CALL
-	//
-	// Пока просто логируем
-	if (ctx->debug >= 1) {
-		printf("[rel] R_XTENSA_SLOT0_OP at %p (sym=0x%lx) - skipped\n", 
-			   addr, (unsigned long)sym_value);
-	}
-	return 0;
-}
-
 int elf_apply_relocations(elf_context_t* ctx) {
 	if (!ctx || !ctx->ehdr || !ctx->shdrs) {
 		return -1;
