@@ -157,6 +157,24 @@ static int allocate_memory(elf_context_t* ctx) {
 	return ELF_OK;
 }
 
+static void assing_real_addresses(elf_context_t* ctx) {
+	for (int i = 0; i < ctx->section_count; i++) {
+		Elf32_Shdr* shdr = &ctx->shdrs[i];
+
+		switch (get_section_load_type(shdr)) {
+			case SEC_IRAM:
+				shdr->sh_addr = (uint32_t)ctx->iram_block + shdr->sh_addr;
+				break;
+			case SEC_DRAM:
+			case SEC_NULL:
+				shdr->sh_addr = (uint32_t)ctx->dram_block + shdr->sh_addr;
+				break;
+			case SEC_SKIP:
+				break;
+		}
+	}
+}
+
 static int load_sections(elf_context_t* ctx) {
 
 	for (int i = 0; i < ctx->section_count; i++) {
@@ -164,30 +182,24 @@ static int load_sections(elf_context_t* ctx) {
 
 		switch (get_section_load_type(shdr)) {
 			case SEC_IRAM: {
-				void* dst = ctx->iram_block + shdr->sh_addr;
 				const void* src = ctx->elf_data + shdr->sh_offset;
-				elf_iram_memcpy(dst, src, shdr->sh_size);
-				shdr->sh_addr = (uint32_t)dst;
+				elf_iram_memcpy((void*)shdr->sh_addr, src, shdr->sh_size);
 				printf("[sec] Loaded IRAM section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
 				break;
 			}
 			case SEC_DRAM: {
-				void* dst = ctx->dram_block + shdr->sh_addr;
 				const void* src = ctx->elf_data + shdr->sh_offset;
-				memcpy(dst, src, shdr->sh_size);
-				shdr->sh_addr = (uint32_t)dst;
+				memcpy((void*)shdr->sh_addr, src, shdr->sh_size);
 				printf("[sec] Loaded DRAM section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
 				break;
 			}
 			case SEC_NULL: {
-				void* dst = ctx->dram_block + shdr->sh_addr;
-				memset(dst, 0, shdr->sh_size);
-				shdr->sh_addr = (uint32_t)dst;
+				memset(shdr->sh_addr, 0, shdr->sh_size);
 				printf("[sec] Loaded NULL section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
 				break;
 			}
 			case SEC_SKIP:
-				continue;
+				break;
 		}
 	}
 
@@ -258,9 +270,8 @@ int elf_load_ex(const uint8_t* elf_data, size_t elf_size, const elf_load_options
 	
 	err = allocate_memory(&ctx);
 	if (err != ELF_OK) goto cleanup;
-	
-	err = load_sections(&ctx);
-	if (err != ELF_OK) goto cleanup;
+
+	assing_real_addresses(&ctx);
 	
 	err = elf_apply_relocations(&ctx);
 	if (err != 0) {
@@ -268,6 +279,10 @@ int elf_load_ex(const uint8_t* elf_data, size_t elf_size, const elf_load_options
 		goto cleanup;
 	}
 	
+	err = load_sections(&ctx);
+	if (err != ELF_OK) goto cleanup;
+
+
 	Cache_Flush(0);
 	
 	const char* entry_name = opts ? opts->entry_name : NULL;
