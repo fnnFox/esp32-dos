@@ -11,7 +11,7 @@
 #define R_XTENSA_ASM_EXPAND 11
 
 typedef struct {
-	const uint8_t* elf_data;	// sources
+	uint8_t* elf_data;			// sources
 	size_t elf_size;			// source size
 	
 	const Elf32_Ehdr* ehdr;		// elf header
