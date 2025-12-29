@@ -168,6 +168,7 @@ static int load_sections(elf_context_t* ctx) {
 				void* src = ctx->elf_data + shdr->sh_offset;
 				elf_iram_memcpy(dst, src, shdr->sh_size);
 				shdr->sh_addr = (uint32_t)dst;
+				printf("[sec] Loaded IRAM section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
 				break;
 			}
 			case SEC_DRAM: {
@@ -175,12 +176,14 @@ static int load_sections(elf_context_t* ctx) {
 				void* src = ctx->elf_data + shdr->sh_offset;
 				memcpy(dst, src, shdr->sh_size);
 				shdr->sh_addr = (uint32_t)dst;
+				printf("[sec] Loaded DRAM section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
 				break;
 			}
 			case SEC_NULL: {
 				void* dst = ctx->dram_block + shdr->sh_addr;
 				memset(dst, 0, shdr->sh_size);
 				shdr->sh_addr = (uint32_t)dst;
+				printf("[sec] Loaded NULL section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
 				break;
 			}
 			case SEC_SKIP:
