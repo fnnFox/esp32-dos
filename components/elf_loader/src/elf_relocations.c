@@ -60,7 +60,8 @@ int elf_apply_relocations(elf_context_t* ctx) {
 
 			switch (type) {
 				case R_XTENSA_32: {
-					elf_write32((void*)patch_ptr, value);
+					uint32_t existing = elf_read32((void*)patch_ptr);
+					elf_write32((void*)patch_ptr, value + existing);
 					
 					if (ctx->debug >= 3) {
 						printf("[rel] R_XTENSA_32: [0x%08lx] = 0x%08lx\n", final_address, value);
