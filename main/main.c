@@ -10,6 +10,8 @@
 #include "shell.h"
 #include "sdcard.h"
 
+#include <dirent.h>
+
 typedef struct {
 	uint8_t* loaded_data;
 	size_t loaded_size;
@@ -47,6 +49,31 @@ void load_data() {
 	} else {
 		printf("Error: No data received.\n");
 	}
+}
+
+void read_data(int argc, char** argv) {
+	free_data();
+	esp_err_t err = sdcard_read_file(argv[1], &dos_context.loaded_data, &dos_context.loaded_size);
+	if (err != ESP_OK) {
+		printf("Data read error\n");
+	}
+}
+
+void ls(int argc, char** argv) {
+	const char* path = (argc > 1) ? argv[1] : "/sd";
+
+	DIR* dir = opendir(path);
+	if (!dir) {
+		printf("No such directory: %s\n", path);
+		return;
+	}
+
+	struct dirent* entry;
+	while ((entry = readdir(dir)) != NULL) {
+		printf(" %s\n", entry->d_name);
+	}
+
+	closedir(dir);
 }
 
 void unload_module() {
@@ -125,6 +152,14 @@ void app_main(void) {
 
 		if (strcmp(argv[0], "load") == 0) {
 			load_data();
+			continue;
+		}
+		if (strcmp(argv[0], "ls") == 0) {
+			ls(argc, argv);
+			continue;
+		}
+		if (strcmp(argv[0], "read") == 0) {
+			read_data(argc, argv);
 			continue;
 		}
 		if (strcmp(argv[0], "module") == 0) {
