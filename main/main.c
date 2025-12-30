@@ -8,6 +8,7 @@
 #include "uart_receiver.h"
 #include "elf_loader.h"
 #include "shell.h"
+#include "sdcard.h"
 
 typedef struct {
 	uint8_t* loaded_data;
@@ -106,6 +107,8 @@ void app_main(void) {
 	snprintf(buf, sizeof(buf), " Free DRAM: %d bytes", dram);
 	printf("|%-30s|\n", buf);
 	printf("================================\n\n");
+
+	sdcard_init();
 
 	char line[128];
 	char* argv[8];
