@@ -33,15 +33,13 @@ void free_data() {
 		dos_context.loaded_data = NULL;
 		dos_context.loaded_size = 0;
 		printf("Data freed.\n");
-	} else {
-		printf("Error: No loaded data.\n");
 	}
 }
 
 void load_data() {
-	if (dos_context.loaded_data) {
-		free_data();
-	}
+
+	free_data();
+	
 	dos_context.loaded_data = uart_receive_data(&dos_context.loaded_size);
 	if (dos_context.loaded_size != 0) {
 		printf("Data loaded. Received %d bytes.\n", dos_context.loaded_size);
