@@ -16,37 +16,32 @@ extern uint32_t elf_resolve_symbol(elf_context_t* ctx, uint32_t sym_idx);
 
 static int validate_elf(elf_context_t* ctx) {
 	if (ctx->elf_size < sizeof(Elf32_Ehdr)) {
-		printf("[elf] File too small\n");
+		printf("[elf] ERROR: File too small\n");
 		return ELF_ERR_INVALID_FORMAT;
 	}
 	
 	ctx->ehdr = (const Elf32_Ehdr*)ctx->elf_data;
 	
-	// Magic check
 	if (memcmp(ctx->ehdr->e_ident, ELFMAG, 4) != 0) {
-		printf("[elf] Invalid magic\n");
+		printf("[elf] ERROR: Invalid magic\n");
 		return ELF_ERR_INVALID_MAGIC;
 	}
 	
-	// ELF 32-bit check
 	if (ctx->ehdr->e_ident[4] != 1) {
-		printf("[elf] Not ELF32\n");
+		printf("[elf] ERROR: Not ELF32\n");
 		return ELF_ERR_INVALID_FORMAT;
 	}
 	
-	// Architecture check
 	if (ctx->ehdr->e_machine != EM_XTENSA) {
-		printf("[elf] Not Xtensa: %d\n", ctx->ehdr->e_machine);
+		printf("[elf] ERROR: Not Xtensa (machine=%d)\n", ctx->ehdr->e_machine);
 		return ELF_ERR_INVALID_ARCH;
 	}
 	
-	// Type check
 	if (ctx->ehdr->e_type != ET_REL) {
-		printf("[elf] Not relocatable: type=%d\n", ctx->ehdr->e_type);
+		printf("[elf] ERROR: Not relocatable (type=%d)\n", ctx->ehdr->e_type);
 		return ELF_ERR_INVALID_FORMAT;
 	}
 	
-	// Printing section count
 	if (ctx->debug >= 1) {
 		printf("[elf] Valid ELF: %d sections\n", ctx->ehdr->e_shnum);
 	}
@@ -75,8 +70,8 @@ static int parse_sections(elf_context_t* ctx) {
 				ctx->strtab = (const char*)(ctx->elf_data + strtab->sh_offset);
 			}
 			
-			if (ctx->debug >= 1) {
-				printf("[elf] Found symtab: %lu symbols\n", (unsigned long)ctx->symtab_count);
+			if (ctx->debug >= 2) {
+				printf("[elf] Found symtab: %lu symbols\n", ctx->symtab_count);
 			}
 			break;
 		}
@@ -133,31 +128,37 @@ static void assign_virtual_addresses(elf_context_t* ctx) {
 static int allocate_memory(elf_context_t* ctx) {
 	
 	if (ctx->debug >= 1) {
-		printf("[elf] Need: IRAM=%d, DRAM=%d\n", ctx->iram_size, ctx->dram_size);
+		printf("[elf] Memory: IRAM=%u, DRAM=%u bytes\n", ctx->iram_size, ctx->dram_size);
 	}
 	
 	if (ctx->iram_size > 0) {
 		ctx->iram_block = heap_caps_malloc(ctx->iram_size, MALLOC_CAP_EXEC | MALLOC_CAP_32BIT);
 		if (!ctx->iram_block) {
-			printf("[elf] Failed to allocate IRAM\n");
+			printf("[elf] ERROR: Failed to allocate IRAM\n");
 			return ELF_ERR_NO_MEMORY;
+		}
+		if (ctx->debug >= 2) {
+			printf("[elf] IRAM block at 0x%08lx\n", (uint32_t)ctx->iram_block);
 		}
 	}
 	
 	if (ctx->dram_size > 0) {
 		ctx->dram_block = heap_caps_malloc(ctx->dram_size, MALLOC_CAP_8BIT);
 		if (!ctx->dram_block) {
-			printf("[elf] Failed to allocate DRAM\n");
+			printf("[elf] ERROR: Failed to allocate DRAM\n");
 			if (ctx->iram_block) heap_caps_free(ctx->iram_block);
 			return ELF_ERR_NO_MEMORY;
 		}
 		memset(ctx->dram_block, 0, ctx->dram_size);
+		if (ctx->debug >= 2) {
+			printf("[elf] DRAM block at 0x%08lx\n", (uint32_t)ctx->dram_block);
+		}
 	}
 	
 	return ELF_OK;
 }
 
-static void assing_real_addresses(elf_context_t* ctx) {
+static void assign_real_addresses(elf_context_t* ctx) {
 	for (int i = 0; i < ctx->section_count; i++) {
 		Elf32_Shdr* shdr = &ctx->shdrs[i];
 
@@ -179,23 +180,33 @@ static int load_sections(elf_context_t* ctx) {
 
 	for (int i = 0; i < ctx->section_count; i++) {
 		Elf32_Shdr* shdr = &ctx->shdrs[i];
+		const char* name = ctx->shstrtab + shdr->sh_name;
 
 		switch (get_section_load_type(shdr)) {
 			case SEC_IRAM: {
 				const void* src = ctx->elf_data + shdr->sh_offset;
 				elf_iram_memcpy((void*)shdr->sh_addr, src, shdr->sh_size);
-				printf("[sec] Loaded IRAM section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
+				if (ctx->debug >= 2) {
+					printf("[sec] %s -> 0x%08lx (%lu bytes, IRAM)\n", 
+						   name, shdr->sh_addr, shdr->sh_size);
+				}
 				break;
 			}
 			case SEC_DRAM: {
 				const void* src = ctx->elf_data + shdr->sh_offset;
 				memcpy((void*)shdr->sh_addr, src, shdr->sh_size);
-				printf("[sec] Loaded DRAM section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
+				if (ctx->debug >= 2) {
+					printf("[sec] %s -> 0x%08lx (%lu bytes, DRAM)\n", 
+						   name, shdr->sh_addr, shdr->sh_size);
+				}
 				break;
 			}
 			case SEC_NULL: {
 				memset((void*)shdr->sh_addr, 0, shdr->sh_size);
-				printf("[sec] Loaded NULL section %s at 0x%08lx\n", ctx->shstrtab + shdr->sh_name, shdr->sh_addr);
+				if (ctx->debug >= 2) {
+					printf("[sec] %s -> 0x%08lx (%lu bytes, BSS)\n", 
+						   name, shdr->sh_addr, shdr->sh_size);
+				}
 				break;
 			}
 			case SEC_SKIP:
@@ -203,11 +214,16 @@ static int load_sections(elf_context_t* ctx) {
 		}
 	}
 
+	if (ctx->debug >= 1) {
+		printf("[elf] Sections loaded\n");
+	}
+
 	return ELF_OK;
 }
 
 static int find_entry(elf_context_t* ctx, const char* entry_name, guest_entry_t* out) {
 	if (!ctx->symtab || !ctx->strtab) {
+		printf("[elf] ERROR: No symbol table\n");
 		return ELF_ERR_NO_ENTRY;
 	}
 	
@@ -226,7 +242,7 @@ static int find_entry(elf_context_t* ctx, const char* entry_name, guest_entry_t*
 				const Elf32_Shdr* shdr = &ctx->shdrs[shndx];
 				*out = (guest_entry_t)(shdr->sh_addr + sym->st_value);
 				if (ctx->debug >= 1) {
-					printf("[elf] Entry '%s' at %p\n", entry_name, *out);
+					printf("[elf] Entry '%s' at 0x%08lx\n", entry_name, (uint32_t)*out);
 				}
 				return ELF_OK;
 			}
@@ -234,14 +250,14 @@ static int find_entry(elf_context_t* ctx, const char* entry_name, guest_entry_t*
 		}
 	}
 	
-	printf("[elf] Entry '%s' not found\n", entry_name);
+	printf("[elf] ERROR: Entry '%s' not found\n", entry_name);
 	return ELF_ERR_NO_ENTRY;
 }
 
 int elf_load(const uint8_t* elf_data, size_t elf_size, elf_module_t* out) {
 	elf_load_options_t opts = {
 		.entry_name = NULL,
-		.debug_level = 10
+		.debug_level = 1
 	};
 	return elf_load_ex(elf_data, elf_size, &opts, out);
 }
@@ -271,7 +287,7 @@ int elf_load_ex(const uint8_t* elf_data, size_t elf_size, const elf_load_options
 	err = allocate_memory(&ctx);
 	if (err != ELF_OK) goto cleanup;
 
-	assing_real_addresses(&ctx);
+	assign_real_addresses(&ctx);
 	
 	err = elf_apply_relocations(&ctx);
 	if (err != 0) {
@@ -281,7 +297,6 @@ int elf_load_ex(const uint8_t* elf_data, size_t elf_size, const elf_load_options
 	
 	err = load_sections(&ctx);
 	if (err != ELF_OK) goto cleanup;
-
 
 	Cache_Flush(0);
 	
@@ -293,6 +308,10 @@ int elf_load_ex(const uint8_t* elf_data, size_t elf_size, const elf_load_options
 	out->text_size = ctx.iram_size;
 	out->data_mem = ctx.dram_block;
 	out->data_size = ctx.dram_size;
+
+	if (ctx.debug >= 1) {
+		printf("[elf] Module loaded successfully\n");
+	}
 	
 	return ELF_OK;
 

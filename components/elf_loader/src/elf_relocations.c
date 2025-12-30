@@ -32,8 +32,8 @@ int elf_apply_relocations(elf_context_t* ctx) {
 
 		uint32_t target_idx = shdr->sh_info;
 		
-		if (ctx->debug >= 1) {
-			printf("[rel] Section '%s' -> target [%lu]\n", name, (unsigned long)target_idx);
+		if (ctx->debug >= 2) {
+			printf("[rel] Section '%s' -> target [%lu]\n", name, target_idx);
 		}
 
 		int rela_count = shdr->sh_size / sizeof(Elf32_Rela);
@@ -47,11 +47,12 @@ int elf_apply_relocations(elf_context_t* ctx) {
 			int idx = rela->r_info >> 8;
 
 			uint8_t* patch_ptr = (uint8_t*)ctx->elf_data + ctx->shdrs[target_idx].sh_offset + rela->r_offset;
+			uint32_t final_address = ctx->shdrs[target_idx].sh_addr + rela->r_offset;
 
 			uint32_t symbol_address = elf_resolve_symbol(ctx, idx);
 
 			if (symbol_address == 0 && idx != 0) {
-				printf("[rel] Failed to resolve symbol %u\n", idx);
+				printf("[rel] ERROR: Failed to resolve symbol %u\n", idx);
 				return -1;
 			}
 
@@ -61,27 +62,32 @@ int elf_apply_relocations(elf_context_t* ctx) {
 				case R_XTENSA_32: {
 					elf_write32((void*)patch_ptr, value);
 					
-					if (ctx->debug >= 2) {
-						printf("[rel] R_XTENSA_32: [0x%08lx] = 0x%08lx\n", *(uint32_t*)patch_ptr, value);
+					if (ctx->debug >= 3) {
+						printf("[rel] R_XTENSA_32: [0x%08lx] = 0x%08lx\n", final_address, value);
 					}
 					break;
 				}
-				
+
 				case R_XTENSA_SLOT0_OP: {
 					uint32_t inst = elf_read24((void*)patch_ptr);
-					printf("[op0] Reading 3 bytes from 0x%08lx: 0x%06lx\n", *(uint32_t*)patch_ptr, inst);
 					int op0 = inst & 0x0F;
 
-					if (op0 == 0x01) {
-						uint32_t pc_aligned = (ctx->shdrs[target_idx].sh_addr + rela->r_offset + 3) & ~3;
+					if (op0 == 0x01) {  // L32R
+						uint32_t pc_aligned = (final_address + 3) & ~3;
 						int32_t offset_bytes = (int32_t)(value - pc_aligned);
 						int32_t offset_words = offset_bytes >> 2;
 						inst = (inst & 0xFF) | ((offset_words & 0xFFFF) << 8);
 						elf_write24((void*)patch_ptr, inst);
-					}
-
-					if (ctx->debug >= 2) {
-						printf("[rel] R_XTENSA_SLOT0_OP: [0x%08lx] = 0x%06lx\n", *(uint32_t*)patch_ptr, inst);
+						
+						if (ctx->debug >= 3) {
+							printf("[rel] L32R: [0x%08lx] -> 0x%08lx (offset=%ld)\n", 
+								   final_address, value, offset_words);
+						}
+					} else {
+						if (ctx->debug >= 2) {
+							printf("[rel] SLOT0_OP: [0x%08lx] op0=0x%x (not handled)\n", 
+								   final_address, op0);
+						}
 					}
 					break;
 				}
@@ -90,12 +96,16 @@ int elf_apply_relocations(elf_context_t* ctx) {
 					break;
 					
 				default:
-					if (ctx->debug >= 1) {
-						printf("[rel] Unknown type %u at offset 0x%lx\n", type, rela->r_offset);
+					if (ctx->debug >= 2) {
+						printf("[rel] Unknown type %u at 0x%08lx\n", type, final_address);
 					}
 					break;
 			}
 		}
+	}
+
+	if (ctx->debug >= 1) {
+		printf("[rel] Relocations done\n");
 	}
 
 	return 0;
