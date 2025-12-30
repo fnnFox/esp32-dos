@@ -73,22 +73,39 @@ int elf_apply_relocations(elf_context_t* ctx) {
 					uint32_t inst = elf_read24((void*)patch_ptr);
 					int op0 = inst & 0x0F;
 
-					if (op0 == 0x01) {  // L32R
-						uint32_t pc_aligned = (final_address + 3) & ~3;
-						int32_t offset_bytes = (int32_t)(value - pc_aligned);
-						int32_t offset_words = offset_bytes >> 2;
-						inst = (inst & 0xFF) | ((offset_words & 0xFFFF) << 8);
-						elf_write24((void*)patch_ptr, inst);
-						
-						if (ctx->debug >= 3) {
-							printf("[rel] L32R: [0x%08lx] -> 0x%08lx (offset=%ld)\n", 
-								   final_address, value, offset_words);
+					switch (op0) {
+						case 0x01: {  // L32R
+							uint32_t pc_aligned = (final_address + 3) & ~3;
+							int32_t offset_bytes = (int32_t)(value - pc_aligned);
+							int32_t offset_words = offset_bytes >> 2;
+							inst = (inst & 0xFF) | ((offset_words & 0xFFFF) << 8);
+							elf_write24((void*)patch_ptr, inst);
+							
+							if (ctx->debug >= 3) {
+								printf("[rel] L32R: [0x%08lx] -> 0x%08lx (offset=%ld)\n", 
+									   final_address, value, offset_words);
+							}
+							break;
 						}
-					} else {
-						if (ctx->debug >= 2) {
-							printf("[rel] SLOT0_OP: [0x%08lx] op0=0x%x (not handled)\n", 
-								   final_address, op0);
+						case 0x05: {
+							uint32_t pc_aligned = (final_address + 4) & ~3;
+							int32_t offset_bytes = (int32_t)(value - pc_aligned);
+							int32_t offset_words = offset_bytes >> 2;
+							
+							inst = (inst & 0x3F) | ((offset_words & 0x3FFFF) << 6);
+							elf_write24((void*)patch_ptr, inst);
+							
+							if (ctx->debug >= 3) {
+								printf("[rel] CALL: [0x%08lx] -> 0x%08lx (offset=%ld)\n", 
+									   final_address, value, offset_words);
+							}
+							break;
 						}
+						default:
+							if (ctx->debug >= 2) {
+								printf("[rel] SLOT0_OP: [0x%08lx] op0=0x%x (not handled)\n", final_address, op0);
+							}
+							break;
 					}
 					break;
 				}
