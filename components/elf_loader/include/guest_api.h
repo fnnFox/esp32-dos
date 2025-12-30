@@ -20,7 +20,7 @@ typedef struct {
 	void* reserved[8];
 } guest_api_t;
 
-typedef int (*guest_entry_t)(guest_api_t* api);
+typedef int (*guest_entry_t)(int argc, char** argv);
 
 guest_api_t guest_api_get_default(void);
 

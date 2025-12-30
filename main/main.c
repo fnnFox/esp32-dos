@@ -76,18 +76,18 @@ void load_module() {
 	printf("\n");
 }
 
-void run_module() {
+void run_module(int argc, char**  argv) {
 	if (!dos_context.module.entry_point) {
 		printf("Error: Module not loaded.\n");
 		return;
 	}
 
-	printf("Jumping to module code...\n");
-	printf("--------------------------------\n");
-	typedef int (*entry_func_t)(void);
-	int result = ((entry_func_t)dos_context.module.entry_point)();
-	printf("--------------------------------\n");
-	printf("Module returned with code: %d\n", result);
+	// printf("Jumping to module code...\n");
+	// printf("--------------------------------\n");
+	typedef int (*entry_func_t)(int,char**);
+	int result = ((entry_func_t)dos_context.module.entry_point)(argc, argv);
+	// printf("--------------------------------\n");
+	printf("\nModule returned with code: %d\n", result);
 }
 
 void app_main(void) {
@@ -131,7 +131,7 @@ void app_main(void) {
 			continue;
 		}
 		if (strcmp(argv[0], "run") == 0) {
-			run_module();
+			run_module(argc , argv);
 			continue;
 		}
 		if (strcmp(argv[0], "exit") == 0) {
