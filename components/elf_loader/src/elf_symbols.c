@@ -68,8 +68,13 @@ void* elf_lookup_export(const char* name) {
 	return NULL;
 }
 
-uint32_t lookup_firmware_symbol(const char* name) {
-	printf("NO LOOKUP IMPLEMENTED\n");
+void* lookup_firmware_symbol(const char* name) {
+	for (int i = 0; g_exports[i].name != NULL; i++) {
+		if (strcmp(g_exports[i].name, name) == 0) {
+			return g_exports[i].address;
+		}
+	}
+	printf("[sym] WARNING: Symbol '%s' not found\n", name);
 	return 0;
 }
 
@@ -82,7 +87,7 @@ uint32_t elf_resolve_symbol(elf_context_t* ctx, uint32_t sym_idx) {
 	
 	if (sym->st_shndx == SHN_UNDEF) {
 		const char* name = ctx->strtab + sym->st_name;
-		return lookup_firmware_symbol(name);
+		return (uint32_t)lookup_firmware_symbol(name);
 	}
 	
 	if (ELF32_ST_TYPE(sym->st_info) == STT_SECTION) {
